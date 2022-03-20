@@ -1,0 +1,70 @@
+/* 1.	Napisz prosty program w Transact-SQL. Zadeklaruj zmienną, przypisz na tą zmienną liczbę rekordów w tabeli Emp (lub jakiejkolwiek innej)
+i wypisz uzyskany wynik używając instrukcji PRINT, w postaci napisu np. "W tabeli jest 10 osób". 
+*/
+DECLARE @counter INT = (SELECT COUNT(*) FROM emp);
+PRINT 'W tabeli jest ' + CONVERT(VARCHAR, @counter) + ' osób.';
+
+/*
+2.	Używając Transact-SQL, policz liczbę pracowników z tabeli EMP. Jeśli liczba jest mniejsza niż 16, wstaw pracownika Kowalskiego i wypisz komunikat. 
+W przeciwnym przypadku wypisz komunikat informujący o tym, że nie wstawiono danych.
+*/
+DECLARE @counter INT = (SELECT COUNT(*) FROM emp);
+IF @counter < 16
+	BEGIN
+		INSERT INTO emp VALUES ((SELECT MAX(empno) + 1 FROM emp), 'KOWALSKI', 'NOWY', null, CURRENT_TIMESTAMP, 500, null, null);
+		PRINT 'Dodano pracownika Kowalskiego.';
+	END
+ELSE
+	PRINT 'Nie wstawiono danych.';
+GO
+
+/*
+3.	Napisz procedurę zwracającą pracowników, którzy zarabiają więcej niż wartość zadana parametrem procedury.
+*/
+CREATE PROCEDURE show_employees_sal_greater_than
+@salary INT
+AS BEGIN
+	SELECT * FROM emp WHERE sal > @salary;
+END
+GO
+
+EXECUTE show_employees_sal_greater_than 800;
+
+/*
+4.	Napisz procedurę służącą do wstawiania działów do tabeli Dept. Procedura będzie pobierać jako parametry: nr_działu, nazwę i lokalizację. 
+Należy sprawdzić, czy dział o takiej nazwie lub lokalizacji już istnieje. Jeżeli istnieje, to nie wstawiamy nowego rekordu. 
+*/
+CREATE PROCEDURE add_new_dept
+@nr_dzialu INT, @nazwa VARCHAR(20), @lokalizacja VARCHAR(20)
+AS BEGIN
+IF NOT EXISTS (SELECT deptno FROM dept WHERE deptno = @nr_dzialu)
+	BEGIN
+		INSERT INTO dept VALUES (@nr_dzialu, @nazwa, @lokalizacja);
+		PRINT 'Dodano nowy dział o nr: ' + CONVERT(VARCHAR, @nr_dzialu) + ', nazwie: ' + @nazwa + ' i lokalizacji: ' + @lokalizacja + '.';
+	END
+ELSE
+	PRINT 'Dział o wskazanym id już istnieje.';
+END
+GO
+
+EXECUTE add_new_dept 19, 'OPEC', 'KOSZYKOWA';
+
+/*
+5.	Napisz procedurę umożliwiającą użytkownikowi wprowadzanie nowych pracowników do tabeli EMP. Jako parametry będziemy podawać nazwisko i 
+nr działu zatrudnianego pracownika. Procedura powinna wprowadzając nowy rekord sprawdzić, czy wprowadzany dział istnieje (jeżeli nie, 
+to należy zgłosić błąd) oraz obliczyć mu pensję równą minimalnemu zarobkowi w tym dziale. EMPNO nowego pracownika powinno zostać wyliczone 
+jako najwyższa istniejąca wartość w tabeli + 1.
+*/
+CREATE PROCEDURE add_new_emp
+@nazwisko VARCHAR(20), @nr_dzialu INT
+AS BEGIN
+IF EXISTS (SELECT deptno FROM dept WHERE deptno = @nr_dzialu)
+	BEGIN
+		INSERT INTO emp VALUES ((SELECT MAX(empno) + 1 FROM emp), @nazwisko, 'NOWY', null, CURRENT_TIMESTAMP, (SELECT MIN(sal) FROM emp WHERE deptno = @nr_dzialu), null, @nr_dzialu);
+	END
+ELSE
+	PRINT 'Błąd: dział o podanym numerze nie istnieje.';
+END
+GO
+
+EXECUTE add_new_emp 'ZELENSKYY', 30;
